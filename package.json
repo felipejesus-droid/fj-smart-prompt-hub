@@ -1,63 +1,19 @@
-# FJ Smart Prompt Hub
-
-Biblioteca corporativa de prompts de IA para equipes de alta performance.
-
-## Stack
-- React 18 + Vite
-- Supabase (Auth + Database)
-- PWA ready
-- Deploy: Vercel
-
-## Setup local
-
-```bash
-npm install
-npm run dev
-```
-
-Acesse: http://localhost:5173
-
-## Deploy Vercel
-
-1. Criar repo no GitHub e fazer push
-2. Importar no vercel.com
-3. Adicionar variáveis de ambiente:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Deploy automático
-
-## Banco de dados
-
-Executar no SQL Editor do Supabase na ordem:
-1. `supabase/migrations/001_initial_schema.sql`
-2. `supabase/migrations/002_seeds.sql`
-
-## Estrutura
-
-```
-src/
-  App.jsx          — aplicação completa
-  main.jsx         — entry point
-supabase/
-  migrations/
-    001_initial_schema.sql
-    002_seeds.sql
-public/
-  favicon.svg
-index.html
-vite.config.js
-.env.local         — suas chaves (não commitar)
-.env.example       — template das variáveis
-```
-
-## Funcionalidades
-
-- Auth Google via Supabase
-- Biblioteca com 40 prompts reais
-- Busca e filtro por categoria
-- Favoritos sincronizados
-- Modal com variáveis editáveis
-- Registro de uso automático
-- Prompt Builder
-- Gamificação (conquistas)
-- PWA instalável
+{
+  "name": "fj-smart-prompt-hub",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "vite": "^5.0.0"
+  }
+}
