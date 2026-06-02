@@ -1,0 +1,943 @@
+-- ============================================================
+-- FJ Smart Prompt Hub — Seeds de Prompts
+-- 40 prompts reais distribuídos nas 5 categorias
+-- Execute APÓS o schema principal
+-- ============================================================
+
+-- Captura os IDs das categorias para usar nos inserts
+do $$
+declare
+  v_hotel      uuid;
+  v_rh         uuid;
+  v_marketing  uuid;
+  v_lideranca  uuid;
+  v_atendimento uuid;
+begin
+
+select id into v_hotel       from public.categories where slug = 'hotel';
+select id into v_rh          from public.categories where slug = 'rh';
+select id into v_marketing   from public.categories where slug = 'marketing';
+select id into v_lideranca   from public.categories where slug = 'lideranca';
+select id into v_atendimento from public.categories where slug = 'atendimento';
+
+-- ============================================================
+-- HOTELARIA (10 prompts)
+-- ============================================================
+
+insert into public.prompts (category_id, title, description, prompt_text, tags, difficulty, is_public, is_featured) values
+
+(v_hotel,
+'Check-in Personalizado VIP',
+'Gera scripts de boas-vindas ultra-personalizados baseados no perfil e histórico do hóspede.',
+'Você é um gerente de hospitalidade de luxo com 15 anos de experiência.
+
+Com base nos dados do hóspede abaixo, crie um script de check-in personalizado com 3 parágrafos:
+1. Saudação calorosa pelo nome com referência ao motivo da viagem
+2. Destaque de 2 benefícios ou serviços alinhados às preferências do hóspede
+3. Oferta proativa de upgrade ou serviço especial com justificativa personalizada
+
+Tom: caloroso, sofisticado, nunca genérico.
+
+Nome: {nome}
+Histórico de estadias: {historico}
+Preferências conhecidas: {preferencias}
+Motivo da viagem: {motivo}',
+array['recepção','vip','experiência','check-in'], 'fácil', true, true),
+
+(v_hotel,
+'Resposta a Avaliação Negativa no TripAdvisor',
+'Transforma críticas negativas em oportunidades de fidelização com tom empático e profissional.',
+'Você é o Gerente de Relacionamento de um hotel 5 estrelas. Responda à avaliação negativa abaixo seguindo esta estrutura:
+
+1. Agradecimento genuíno pelo feedback (1-2 frases)
+2. Reconhecimento específico do problema sem se defender
+3. Pedido de desculpas direto e humano
+4. Explicação breve do que está sendo corrigido (se aplicável)
+5. Convite para uma nova experiência com oferta concreta
+
+Regras:
+- Tom: profissional, empático, nunca defensivo, nunca genérico
+- Máximo 180 palavras
+- Não use frases clichê como "lamentamos o ocorrido"
+- Personalize pela reclamação específica
+
+Avaliação recebida: {texto_avaliacao}
+Nome do hóspede (se disponível): {nome_hospede}
+Nota dada: {nota}/5',
+array['reputação','tripadvisor','crm','comunicação'], 'médio', true, true),
+
+(v_hotel,
+'Briefing Diário da Operação',
+'Gera o briefing matinal completo para a equipe operacional do hotel.',
+'Você é o gerente de turno de um hotel. Com base nos dados abaixo, crie o briefing diário da operação para ser lido na reunião das {horario} com a equipe.
+
+Estrutura:
+1. Ocupação do dia (% e números absolutos)
+2. Check-ins esperados com alertas VIP e grupos
+3. Check-outs pendentes e late checkouts confirmados
+4. Manutenções e interdições ativas
+5. Eventos internos e externos que impactam a operação
+6. 3 prioridades do turno
+7. Mensagem motivacional breve (1 frase)
+
+Tom: objetivo, direto, operacional.
+
+Ocupação atual: {ocupacao}%
+Total de apartamentos: {total_apts}
+Check-ins previstos: {checkins}
+Check-outs pendentes: {checkouts}
+VIPs esperados: {vips}
+Eventos do dia: {eventos}
+Manutenções ativas: {manutencoes}',
+array['operação','briefing','gestão','reunião'], 'médio', true, false),
+
+(v_hotel,
+'Script de Upsell no Check-in',
+'Técnica de upsell natural para upgrade de quarto sem soar forçado.',
+'Você é um recepcionista treinado em vendas consultivas.
+
+Crie 3 variações de script para oferecer upgrade de quarto durante o check-in. Cada script deve:
+- Ter no máximo 4 frases
+- Começar com uma observação sobre a reserva atual
+- Apresentar o upgrade como um benefício exclusivo para o hóspede
+- Mencionar 1 benefício emocional (não apenas o serviço)
+- Incluir o preço de forma natural e não invasiva
+- Ter um fechamento que aceite bem tanto o sim quanto o não
+
+Quarto atual reservado: {quarto_atual}
+Quarto disponível para upgrade: {quarto_upgrade}
+Diferença de preço/noite: R$ {diferenca_preco}
+Benefícios do upgrade: {beneficios}',
+array['upsell','vendas','receita','front desk'], 'médio', true, false),
+
+(v_hotel,
+'Roteiro de Inspeção de Apartamento',
+'Checklist narrativo para inspeção de qualidade antes da entrega ao hóspede.',
+'Você é o supervisor de governança. Crie um roteiro de inspeção de apartamento em formato de checklist narrativo, organizado por área.
+
+Para cada item, inclua:
+- O que verificar
+- O padrão esperado
+- O que fazer se encontrar não-conformidade
+
+Áreas: entrada, sala, quarto, banheiro, varanda (se aplicável), minibar.
+
+Adapte para:
+Tipo de apartamento: {tipo_apto}
+Categoria do hotel: {categoria} estrelas
+Padrão de arrumação: {padrao} (entrada / saída / pernoite)',
+array['governança','qualidade','operação','checklist'], 'fácil', true, false),
+
+(v_hotel,
+'Email de Pré-Chegada Personalizado',
+'Sequência de email enviada 48h antes do check-in para elevar a experiência.',
+'Você é especialista em hospitalidade digital. Crie um email de pré-chegada para ser enviado 48h antes do check-in.
+
+O email deve conter:
+1. Saudação personalizada com expectativa da chegada
+2. Confirmação resumida da reserva (sem parecer burocrático)
+3. Dica exclusiva sobre o hotel ou destino (baseada na época do ano ou perfil)
+4. 2 serviços opcionais com link de solicitação
+5. Informações práticas de chegada (horário, acesso, estacionamento)
+6. CTA para responder com pedidos especiais
+
+Tom: antecipatório, personalizado, sofisticado. Máximo 300 palavras.
+
+Nome do hóspede: {nome}
+Data de chegada: {data_chegada}
+Tipo de quarto: {tipo_quarto}
+Motivo da viagem (se conhecido): {motivo}
+Cidade do hotel: {cidade}',
+array['email','pré-chegada','experiência','comunicação'], 'fácil', true, true),
+
+(v_hotel,
+'Análise de RevPAR e Ações Corretivas',
+'Interpreta dados de RevPAR e gera plano de ação comercial.',
+'Você é um consultor de revenue management hoteleiro. Analise os dados abaixo e produza:
+
+1. Diagnóstico em 3 pontos do desempenho do período
+2. Comparação com benchmark do mercado (se fornecido)
+3. Identificação das 2 principais causas de queda ou crescimento
+4. 3 ações comerciais priorizadas para os próximos 30 dias
+5. 1 ação de médio prazo (90 dias)
+
+Formato: executivo, com bullets claros. Sem jargão excessivo.
+
+RevPAR atual: R$ {revpar_atual}
+RevPAR período anterior: R$ {revpar_anterior}
+Ocupação: {ocupacao}%
+Diária média: R$ {diaria_media}
+Benchmark do mercado: {benchmark}
+Período analisado: {periodo}',
+array['revenue','gestão','financeiro','estratégia'], 'avançado', true, false),
+
+(v_hotel,
+'Resposta a Solicitação Especial Impossível',
+'Script para negar pedidos de hóspedes de forma elegante e oferecer alternativa.',
+'Você é um gerente de relacionamento experiente. O hóspede fez uma solicitação que não pode ser atendida exatamente como pedida.
+
+Crie uma resposta que:
+1. Demonstre que o pedido foi levado a sério
+2. Explique a limitação de forma breve e sem desculpas excessivas
+3. Ofereça 2 alternativas concretas e atraentes
+4. Mantenha o hóspede se sentindo especial
+
+Tom: caloroso, solícito, criativo. Máximo 120 palavras.
+
+Solicitação do hóspede: {solicitacao}
+Motivo pelo qual não é possível: {motivo_recusa}
+Alternativas disponíveis: {alternativas}',
+array['relacionamento','solicitações','crm','comunicação'], 'fácil', true, false),
+
+(v_hotel,
+'Plano de Ação para Reclamação Recorrente',
+'Estrutura um plano para resolver problema que se repete nas avaliações.',
+'Você é consultor de qualidade hoteleira. Com base na reclamação recorrente identificada, crie um plano de ação estruturado:
+
+1. Análise da causa raiz (5 Porquês simplificado)
+2. Impacto estimado na satisfação e reputação
+3. Ações corretivas imediatas (implementar em 7 dias)
+4. Ações preventivas estruturais (implementar em 30 dias)
+5. Indicador para monitorar se o problema foi resolvido
+6. Responsáveis por cada ação
+
+Reclamação recorrente: {reclamacao}
+Frequência: {frequencia} menções no último mês
+Área envolvida: {area}
+Recursos disponíveis: {recursos}',
+array['qualidade','melhoria','gestão','processos'], 'avançado', true, false),
+
+(v_hotel,
+'Script de Despedida e Fidelização no Check-out',
+'Roteiro para transformar o check-out em um momento de fidelização.',
+'Você é especialista em experiência do hóspede. Crie um script de check-out para a recepção que:
+
+1. Abra com referência positiva à estadia (personalizada)
+2. Pergunte sobre a experiência de forma que gere resposta genuína (não "tudo bem?")
+3. Resolva qualquer insatisfação identificada na hora
+4. Apresente o programa de fidelidade ou próxima reserva de forma natural
+5. Feche com uma despedida memorável e personalizada
+
+Inclua 2 variações: hóspede satisfeito e hóspede com ressalvas.
+Tom: genuíno, caloroso, sem roteiro mecânico.
+
+Nome do hóspede: {nome}
+Duração da estadia: {dias} noites
+Alguma ocorrência registrada: {ocorrencias}',
+array['check-out','fidelização','experiência','recepção'], 'médio', true, false);
+
+-- ============================================================
+-- RH (8 prompts)
+-- ============================================================
+
+insert into public.prompts (category_id, title, description, prompt_text, tags, difficulty, is_public, is_featured) values
+
+(v_rh,
+'Feedback 1:1 pelo Modelo SBI',
+'Roteiro completo de feedback individual estruturado em Situação, Comportamento e Impacto.',
+'Você é um gestor especialista em desenvolvimento de pessoas. Crie um roteiro de feedback 1:1 usando o modelo SBI.
+
+Estrutura:
+1. Abertura: criar ambiente seguro (2-3 frases)
+2. Feedback positivo com SBI (Situação → Comportamento → Impacto)
+3. Feedback de desenvolvimento com SBI
+4. Pergunta aberta para o colaborador se expressar
+5. Acordo de 1-2 ações concretas com prazo
+6. Fechamento motivador
+
+Tom: direto, construtivo, respeitoso. Evitar jargão corporativo.
+
+Colaborador: {nome}
+Comportamentos positivos observados: {comportamentos_positivos}
+Comportamentos para desenvolver: {comportamentos_desenvolver}
+Contexto da situação: {contexto}
+Próximo período de avaliação: {periodo}',
+array['feedback','desenvolvimento','1:1','liderança'], 'médio', true, true),
+
+(v_rh,
+'Plano de Onboarding 30-60-90 Dias',
+'Plano completo de integração para novos colaboradores com milestones e checkpoints.',
+'Você é especialista em integração de talentos. Crie um plano de onboarding 30-60-90 dias.
+
+Para cada fase, defina:
+- 3 objetivos de aprendizado
+- 2 entregas esperadas e mensuráveis
+- Reuniões e treinamentos obrigatórios
+- 1 checkpoint de alinhamento com o gestor
+- Métrica de sucesso da fase
+
+Inclua também:
+- Kit de boas-vindas recomendado (simbólico, não custo)
+- Buddy de onboarding: perfil ideal
+- Riscos de perda nos primeiros 90 dias e como mitigar
+
+Cargo: {cargo}
+Área: {area}
+Gestor direto: {gestor}
+Principais desafios do cargo: {desafios}
+Cultura da empresa em 3 palavras: {cultura}',
+array['onboarding','integração','cultura','rh'], 'avançado', true, true),
+
+(v_rh,
+'Descrição de Cargo Atraente',
+'Transforma descrições técnicas de cargo em textos que atraem os melhores talentos.',
+'Você é especialista em employer branding e atração de talentos. Reescreva a descrição de cargo abaixo para ser:
+
+1. Abertura: propósito do cargo na empresa (não "responsabilidades")
+2. O que você vai fazer: bullets dinâmicos com verbos de ação
+3. O que buscamos: competências como comportamentos, não requisitos burocráticos
+4. O que oferecemos: benefícios com contexto real, não lista seca
+5. Sobre nós: 2 frases que capturam a cultura sem clichê
+
+Regras:
+- Zero linguagem corporativa ("dinâmico", "proativo", "colaborativo")
+- Máximo 350 palavras
+- Tom: direto, humano, aspiracional
+
+Cargo: {cargo}
+Descrição atual ou requisitos básicos: {descricao_atual}
+Nível: {nivel}
+Diferenciais da empresa: {diferenciais}',
+array['recrutamento','employer branding','seleção','comunicação'], 'médio', true, false),
+
+(v_rh,
+'Roteiro de Entrevista por Competências',
+'Gera perguntas comportamentais validadas para avaliar competências específicas.',
+'Você é especialista em seleção por competências. Crie um roteiro de entrevista comportamental.
+
+Para cada competência, gere:
+- 2 perguntas abertas no formato STAR (Situação, Tarefa, Ação, Resultado)
+- 1 pergunta de aprofundamento (follow-up)
+- Sinais positivos de resposta (o que ouvir)
+- Sinais de alerta (o que prestar atenção)
+
+Inclua também:
+- 2 perguntas de cultura fit
+- 1 pergunta final aberta para o candidato
+
+Cargo: {cargo}
+Competências a avaliar: {competencias}
+Cultura da empresa: {cultura}
+Principal desafio do cargo: {desafio}',
+array['entrevista','seleção','competências','recrutamento'], 'avançado', true, false),
+
+(v_rh,
+'Comunicado de Mudança Organizacional',
+'Redige comunicados internos sobre mudanças estruturais com transparência e clareza.',
+'Você é especialista em comunicação interna. Redija um comunicado sobre a mudança organizacional descrita abaixo.
+
+Estrutura:
+1. O que está mudando (objetivo, direto)
+2. Por que essa mudança está acontecendo (contexto honesto)
+3. O que muda na prática para cada grupo de colaboradores
+4. O que NÃO muda (ancoragem emocional)
+5. Próximos passos e cronograma
+6. Canal para dúvidas
+
+Tom: transparente, humano, confiante — sem corporativês, sem eufemismos.
+Máximo 400 palavras.
+
+Mudança: {descricao_mudanca}
+Áreas impactadas: {areas}
+Data de vigência: {data}
+Quem assina: {assinatura}',
+array['comunicação interna','mudança','cultura','gestão'], 'médio', true, false),
+
+(v_rh,
+'PDI — Plano de Desenvolvimento Individual',
+'Estrutura um PDI completo e acionável para um colaborador em desenvolvimento.',
+'Você é um especialista em desenvolvimento de carreira. Crie um PDI (Plano de Desenvolvimento Individual) completo.
+
+Estrutura:
+1. Situação atual: pontos fortes e gaps identificados
+2. Objetivo de desenvolvimento (SMART)
+3. Competências a desenvolver (máximo 3, priorizadas)
+4. Para cada competência:
+   - Ação de desenvolvimento (curso, projeto, mentoria, leitura)
+   - Prazo
+   - Como será medido o progresso
+5. Recursos necessários (tempo, verba, apoio do gestor)
+6. Checkpoint mensal: o que revisar
+
+Colaborador: {nome}
+Cargo atual: {cargo}
+Objetivo de carreira: {objetivo_carreira}
+Pontos fortes: {pontos_fortes}
+Gaps identificados: {gaps}
+Horizonte do PDI: {meses} meses',
+array['pdi','desenvolvimento','carreira','gestão'], 'avançado', true, true),
+
+(v_rh,
+'Pesquisa de Clima Rápida',
+'Cria questionário de pesquisa de clima enxuto e acionável para times.',
+'Você é especialista em engajamento e clima organizacional. Crie uma pesquisa de clima rápida (máximo 10 questões) para ser respondida em até 5 minutos.
+
+Inclua:
+- 3 questões de engajamento geral (escala 1-10)
+- 3 questões sobre liderança imediata
+- 2 questões sobre ambiente e recursos
+- 1 questão aberta sobre o que melhorar
+- 1 questão sobre intenção de permanência
+
+Para cada questão, indique:
+- O que ela mede
+- Como interpretar respostas baixas
+
+Área/time: {area}
+Momento da empresa: {momento}
+Principal preocupação do RH: {preocupacao}',
+array['clima','engajamento','pesquisa','rh'], 'médio', true, false),
+
+(v_rh,
+'Roteiro de Desligamento Humanizado',
+'Guia o gestor em como conduzir uma conversa de desligamento com dignidade.',
+'Você é especialista em offboarding e experiência do colaborador. Crie um roteiro para a conversa de desligamento.
+
+Inclua:
+1. Como abrir a conversa (direto, respeitoso, sem prolongar o sofrimento)
+2. Como comunicar a decisão (frases exatas recomendadas)
+3. Como responder às principais reações: choro, raiva, negação, frieza
+4. O que cobrir operacionalmente sem parecer frio
+5. Como encerrar de forma digna
+6. O que NÃO dizer em hipótese alguma
+
+Tipo de desligamento: {tipo} (sem justa causa / por performance / reestruturação)
+Tempo de empresa do colaborador: {tempo_empresa}
+Relacionamento atual com o gestor: {relacionamento}',
+array['desligamento','offboarding','liderança','rh'], 'avançado', true, false);
+
+-- ============================================================
+-- MARKETING (8 prompts)
+-- ============================================================
+
+insert into public.prompts (category_id, title, description, prompt_text, tags, difficulty, is_public, is_featured) values
+
+(v_marketing,
+'Caption Instagram para Hotel',
+'Cria captions magnéticos para Instagram com alta taxa de engajamento.',
+'Você é copywriter especializado em marketing de hospitalidade e turismo.
+
+Crie 3 variações de caption para Instagram sobre {tema} para o {nome_hotel}.
+
+Cada variação deve ter:
+- Gancho nas primeiras 2 linhas (antes do "ver mais")
+- Storytelling de 3-4 linhas que evoca emoção ou desejo
+- CTA claro e específico (não "saiba mais")
+- 5 hashtags estratégicas (mistura de alto e médio volume)
+
+Variação 1: Tom aspiracional/desejo
+Variação 2: Tom storytelling/memória
+Variação 3: Tom exclusividade/urgência
+
+Nome do hotel: {nome_hotel}
+Tema/assunto do post: {tema}
+Público-alvo do hotel: {publico}
+Estação ou evento especial (se aplicável): {sazonalidade}',
+array['instagram','copywriting','social media','conteúdo'], 'fácil', true, true),
+
+(v_marketing,
+'Campanha de Email para Datas Sazonais',
+'Sequência de 3 emails para campanhas sazonais com alta taxa de abertura.',
+'Você é especialista em email marketing para hospitalidade. Crie uma sequência de 3 emails para a campanha sazonal abaixo.
+
+Email 1 — Antecipação (15 dias antes):
+- Assunto com curiosidade/urgência
+- Teaser da oferta sem revelar tudo
+- CTA para lista VIP de acesso antecipado
+
+Email 2 — Lançamento (7 dias antes):
+- Assunto direto com oferta
+- Detalhes completos da campanha
+- Prova social (avaliações, números)
+- CTA principal + CTA alternativo
+
+Email 3 — Última chance (1 dia antes):
+- Assunto de urgência real
+- Resumo dos benefícios em bullets
+- Contador de vagas/disponibilidade
+- CTA único e impossível de ignorar
+
+Hotel: {nome_hotel}
+Data/evento: {evento}
+Oferta principal: {oferta}
+Público da lista: {publico}',
+array['email marketing','campanhas','sazonalidade','conversão'], 'médio', true, false),
+
+(v_marketing,
+'Estratégia de Conteúdo 30 Dias',
+'Plano editorial completo de um mês para redes sociais de hotel.',
+'Você é estrategista de conteúdo digital para hospitalidade. Crie um plano editorial de 30 dias.
+
+Formato de entrega:
+- Calendário semanal com tema central por semana
+- Para cada semana: 5 posts (3 feed + 2 stories)
+- Para cada post: plataforma, formato (foto/reel/carrossel), tema, gancho principal, objetivo (alcance/engajamento/conversão)
+- 2 datas especiais do mês a explorar
+
+Pilares de conteúdo obrigatórios (distribuir ao longo do mês):
+- Experiência do hóspede
+- Bastidores da equipe
+- Destino/cidade
+- Oferta/comercial
+- Lifestyle/aspiracional
+
+Hotel: {nome_hotel}
+Mês: {mes}
+Segmento do hotel: {segmento}
+Tom da marca: {tom}
+Plataformas ativas: {plataformas}',
+array['planejamento','conteúdo','redes sociais','editorial'], 'avançado', true, true),
+
+(v_marketing,
+'Bio e Apresentação para Google Meu Negócio',
+'Otimiza a presença do hotel no Google com descrição que converte.',
+'Você é especialista em SEO local e marketing de busca para hospitalidade.
+
+Crie 3 versões de descrição para o Google Meu Negócio, cada uma com tamanho diferente:
+- Versão curta: 150 caracteres (para snippet)
+- Versão média: 300 caracteres
+- Versão completa: 750 caracteres (máximo permitido)
+
+Todas devem:
+- Incluir palavras-chave naturalmente integradas
+- Destacar 1-2 diferenciais únicos
+- Ter CTA claro
+- Não soar como lista de atributos
+
+Inclua também: 10 palavras-chave sugeridas para os atributos do perfil.
+
+Nome do hotel: {nome_hotel}
+Localização: {cidade}, {estado}
+Categoria: {categoria} estrelas
+3 diferenciais principais: {diferenciais}
+Público-alvo: {publico}',
+array['seo','google','local','visibilidade'], 'médio', true, false),
+
+(v_marketing,
+'Roteiro de Vídeo Institucional 60s',
+'Roteiro completo para vídeo institucional do hotel em 60 segundos.',
+'Você é roteirista especializado em vídeos institucionais para hospitalidade de luxo.
+
+Crie um roteiro de vídeo de 60 segundos dividido em:
+
+[0-5s] Hook visual + frase de abertura
+[5-20s] Experiência do hóspede (3 cenas rápidas)
+[20-35s] Diferenciais únicos do hotel (mostrar, não narrar)
+[35-50s] Momento emocional central (o que o hóspede sente)
+[50-60s] CTA + logo + tagline
+
+Para cada cena: descrição visual, texto em off (se houver), duração.
+Tom geral: {tom}
+
+Nome do hotel: {nome_hotel}
+Segmento: {segmento}
+3 diferenciais visuais do hotel: {diferenciais}
+Tagline (se existir): {tagline}
+Onde será veiculado: {canais}',
+array['vídeo','roteiro','institucional','branding'], 'avançado', true, false),
+
+(v_marketing,
+'Resposta Comercial para Evento Corporativo',
+'Proposta comercial persuasiva para grupos e eventos corporativos.',
+'Você é gerente comercial de um hotel especializado em eventos. Redija uma proposta comercial por email para o grupo corporativo abaixo.
+
+Estrutura:
+1. Abertura personalizada (referência à conversa ou necessidade)
+2. Entendimento do evento (mostrar que ouviu)
+3. Proposta de espaços e serviços (não lista de preços — narrativa de experiência)
+4. Diferenciais competitivos do hotel para este tipo de evento
+5. Próximos passos claros (visita, cotação, bloqueio de data)
+6. Fechamento com senso de disponibilidade, não urgência forçada
+
+Tom: consultivo, confiante, parceiro — não vendedor.
+
+Nome da empresa: {empresa}
+Responsável: {contato}
+Tipo de evento: {tipo_evento}
+Data estimada: {data}
+Número de participantes: {participantes}
+Necessidades especiais mencionadas: {necessidades}',
+array['eventos','comercial','b2b','proposta'], 'médio', true, false),
+
+(v_marketing,
+'Análise de Concorrentes para Posicionamento',
+'Identifica gaps e oportunidades de posicionamento em relação aos concorrentes.',
+'Você é consultor de marketing estratégico para hospitalidade. Com base nas informações abaixo, produza uma análise de posicionamento.
+
+Entregue:
+1. Mapa de posicionamento: onde cada concorrente se situa (preço x experiência)
+2. Análise de pontos fortes e fracos de cada concorrente
+3. Gaps identificados no mercado (o que nenhum está fazendo bem)
+4. 3 oportunidades de diferenciação para o nosso hotel
+5. Recomendação de posicionamento em 1 frase (como você quer ser lembrado)
+
+Nosso hotel: {nosso_hotel}
+Segmento e localização: {segmento_local}
+Concorrentes (nome + breve descrição): {concorrentes}
+Nossos diferenciais atuais: {diferenciais}',
+array['estratégia','posicionamento','concorrência','marketing'], 'avançado', true, false),
+
+(v_marketing,
+'Legenda para Foto de Gastronomia',
+'Captions que fazem o seguidor sentir o sabor antes de provar.',
+'Você é copywriter especializado em marketing gastronômico e lifestyle.
+
+Crie 3 captions para a foto do prato/bebida abaixo, cada um com uma abordagem diferente:
+
+1. Sensorial: descrição que ativa olfato, paladar e visão
+2. Storytelling: origem do ingrediente, chef, ou tradição por trás do prato
+3. Convite: cria desejo imediato e CTA para reserva
+
+Para cada caption:
+- Máximo 5 linhas antes do "ver mais"
+- 3-4 hashtags específicas de gastronomia
+- Emoji estratégico (1-2 no máximo)
+
+Prato/bebida: {prato}
+Ingredientes ou técnica especial: {ingredientes}
+Restaurante/bar: {restaurante}
+Horário de serviço: {horario}',
+array['gastronomia','instagram','food','copywriting'], 'fácil', true, false);
+
+-- ============================================================
+-- LIDERANÇA (7 prompts)
+-- ============================================================
+
+insert into public.prompts (category_id, title, description, prompt_text, tags, difficulty, is_public, is_featured) values
+
+(v_lideranca,
+'OKR Trimestral para Hotel',
+'Estrutura OKRs alinhados à estratégia hoteleira com Key Results mensuráveis.',
+'Você é especialista em gestão estratégica e OKR para hospitalidade.
+
+Com base nos dados abaixo, crie os OKRs do próximo trimestre.
+
+Formato:
+- 1 Objetivo principal (aspiracional, qualitativo)
+- 3-4 Key Results (mensuráveis, com número e prazo)
+- Para cada KR: iniciativa principal sugerida
+- 1 Objetivo secundário de time
+
+Regras dos KRs:
+- Sempre com número (%, R$, NPS, quantidade)
+- Desafiadores mas atingíveis (70% = sucesso)
+- Mesuráveis semanalmente ou quinzenalmente
+
+Área: {area}
+Meta de crescimento: {meta}%
+Desafio principal do trimestre: {desafio}
+Recursos disponíveis: {recursos}
+Performance do trimestre anterior: {performance_anterior}',
+array['okr','metas','estratégia','gestão'], 'avançado', true, true),
+
+(v_lideranca,
+'Reunião de Time Semanal Eficiente',
+'Roteiro de reunião semanal de 30 minutos que gera resultado, não relato.',
+'Você é especialista em reuniões eficazes e gestão ágil de times.
+
+Crie o roteiro de uma reunião semanal de time de {duracao} minutos.
+
+Estrutura (com timing para cada parte):
+1. Abertura energizante (não "tudo bem?")
+2. Check de resultados: o que moveu a agulha na semana?
+3. Impedimentos: o que está travando? (resolvido na hora ou delegado)
+4. Foco da semana: 3 prioridades não negociáveis
+5. Reconhecimento: 1 destaque do time
+6. Encerramento com comprometimento verbal
+
+Inclua: perguntas exatas para o facilitador usar.
+Tom: energético, objetivo, sem espaço para longas narrativas.
+
+Tamanho do time: {tamanho_time}
+Área: {area}
+Principal desafio do time atualmente: {desafio}',
+array['reunião','gestão','time','produtividade'], 'médio', true, false),
+
+(v_lideranca,
+'Comunicação de Decisão Difícil',
+'Como comunicar decisões impopulares mantendo confiança e engajamento.',
+'Você é especialista em comunicação de liderança. Crie um roteiro para comunicar a decisão difícil abaixo.
+
+Estrutura:
+1. Contexto: por que essa decisão foi necessária (honesto, sem eufemismos)
+2. O que foi considerado antes de decidir (mostrar que pesou as consequências)
+3. A decisão em si (direta, sem "jargão suavizador")
+4. Impacto real para o time (não minimizar)
+5. O que o líder vai fazer para apoiar a transição
+6. Espaço para perguntas: como conduzir
+
+Inclua também: as 3 perguntas mais prováveis do time e como respondê-las.
+
+Decisão a comunicar: {decisao}
+Impacto no time: {impacto}
+Prazo de implementação: {prazo}
+Histórico de confiança com o time: {historico}',
+array['comunicação','liderança','decisão','gestão de pessoas'], 'avançado', true, true),
+
+(v_lideranca,
+'Plano de Sucessão para Cargo-Chave',
+'Mapeia e desenvolve potenciais sucessores para posições críticas.',
+'Você é especialista em gestão de talentos e sucessão. Crie um plano de sucessão para o cargo abaixo.
+
+Entregue:
+1. Mapeamento de criticidade do cargo (o que se perde se ficar vago)
+2. Perfil do sucessor ideal (competências, não currículo)
+3. Avaliação dos candidatos internos identificados
+4. Para cada candidato: gap de desenvolvimento e prazo estimado de prontidão
+5. Plano de desenvolvimento acelerado para o candidato prioritário
+6. Plano de contingência (se nenhum interno estiver pronto em 12 meses)
+
+Cargo: {cargo}
+Titular atual e previsão de saída: {titular}
+Candidatos internos considerados: {candidatos}
+Prazo para prontidão necessária: {prazo}',
+array['sucessão','talentos','estratégia','rh'], 'avançado', true, false),
+
+(v_lideranca,
+'Discurso Motivacional para Time',
+'Cria falas inspiradoras e autênticas para momentos de virada ou reconhecimento.',
+'Você é especialista em comunicação de liderança e storytelling corporativo.
+
+Escreva um discurso motivacional de {duracao} minutos para ser falado (não lido) pelo líder.
+
+Estrutura:
+1. Abertura com história real ou metáfora relevante (não clichê)
+2. Reconhecimento específico do que o time conquistou
+3. O desafio que está por vir (honesto, não subestimado)
+4. Por que este time é capaz (argumentos concretos)
+5. Chamada à ação emocional e prática
+6. Fechamento memorável (frase que fica)
+
+Regras:
+- Zero frases clichê ("juntos somos mais fortes", "vamos dar o nosso melhor")
+- Linguagem falada, não escrita
+- 1 referência cultural ou esportiva relevante
+
+Contexto: {contexto}
+Tom desejado: {tom}
+Conquista a reconhecer: {conquista}
+Desafio à frente: {desafio}',
+array['motivação','discurso','liderança','cultura'], 'médio', true, false),
+
+(v_lideranca,
+'Avaliação de Desempenho Semestral',
+'Estrutura uma avaliação de desempenho completa, justa e acionável.',
+'Você é especialista em gestão de performance. Crie uma avaliação de desempenho semestral completa.
+
+Estrutura:
+1. Resultados entregues vs. metas (análise quantitativa)
+2. Avaliação de competências comportamentais (3-5 competências da área)
+3. Pontos fortes com evidências específicas
+4. Oportunidades de desenvolvimento com evidências
+5. Classificação de performance: {escala}
+6. Acordos para o próximo semestre (metas + comportamentos)
+7. Comentários do colaborador (espaço estruturado)
+
+Tom: justo, baseado em fatos, sem ambiguidade.
+
+Colaborador: {nome}
+Cargo: {cargo}
+Metas do semestre: {metas}
+Resultados alcançados: {resultados}
+Competências da área: {competencias}',
+array['avaliação','performance','gestão','rh'], 'avançado', true, false),
+
+(v_lideranca,
+'Delegação Eficaz de Tarefa',
+'Script para delegar tarefas garantindo clareza, autonomia e accountability.',
+'Você é especialista em gestão e desenvolvimento de lideranças.
+
+Crie um script de delegação para ser usado pelo líder na conversa com o colaborador.
+
+Inclua:
+1. Contexto: por que esta tarefa existe e importa (não "porque eu mandei")
+2. Escopo claro: o que está incluído e excluído
+3. Resultado esperado: como o sucesso será reconhecido
+4. Recursos disponíveis: o que o colaborador pode usar
+5. Pontos de checagem: quando e como o líder vai acompanhar (sem microgerenciar)
+6. Autonomia declarada: até onde o colaborador pode decidir sozinho
+7. Pergunta final: o que o colaborador precisa de mim para ter sucesso?
+
+Tarefa a delegar: {tarefa}
+Colaborador: {nome}
+Prazo: {prazo}
+Nível de autonomia desejado: {autonomia} (baixo/médio/alto)',
+array['delegação','liderança','gestão','produtividade'], 'médio', true, false);
+
+-- ============================================================
+-- ATENDIMENTO (7 prompts)
+-- ============================================================
+
+insert into public.prompts (category_id, title, description, prompt_text, tags, difficulty, is_public, is_featured) values
+
+(v_atendimento,
+'Script de Primeiro Contato por WhatsApp',
+'Abre conversas no WhatsApp de forma calorosa, profissional e que gera resposta.',
+'Você é especialista em atendimento conversacional e vendas consultivas por WhatsApp.
+
+Crie 3 variações de mensagem de primeiro contato para {contexto_contato}.
+
+Cada variação deve:
+- Ter no máximo 4 linhas (respeito ao espaço do cliente)
+- Apresentar quem é você/o hotel sem parecer robô
+- Demonstrar que o contato é personalizado (não disparo em massa)
+- Fazer 1 pergunta que gera resposta fácil
+- Ter um tom {tom}
+
+Variação 1: Formal/executivo
+Variação 2: Caloroso/próximo
+Variação 3: Direto/objetivo
+
+Nome do hotel/empresa: {empresa}
+Motivo do contato: {motivo}
+Nome do cliente (se disponível): {nome_cliente}',
+array['whatsapp','primeiro contato','atendimento','conversão'], 'fácil', true, true),
+
+(v_atendimento,
+'Gestão de Crise de Atendimento',
+'Protocolo completo para resolver situações críticas de atendimento ao cliente.',
+'Você é especialista em gestão de crises e relacionamento com clientes.
+
+Crie um protocolo de gestão para a crise de atendimento abaixo:
+
+1. Resposta imediata (primeiros 5 minutos): o que dizer/fazer exatamente
+2. Investigação rápida: 3 perguntas para entender o problema real
+3. Escalonamento: quando e para quem escalar
+4. Solução: opções de resolução em ordem de impacto
+5. Comunicação ao cliente: script da conversa de resolução
+6. Encerramento: como confirmar satisfação sem parecer forçado
+7. Registro e aprendizado: o que documentar
+
+Situação de crise: {situacao}
+Cliente: {perfil_cliente}
+Impacto potencial: {impacto}
+Recursos para resolução: {recursos}',
+array['crise','atendimento','relacionamento','protocolo'], 'avançado', true, false),
+
+(v_atendimento,
+'FAQ Inteligente para Chatbot',
+'Cria base de respostas humanizadas para automatizar atendimento frequente.',
+'Você é especialista em UX de atendimento e automação conversacional.
+
+Crie uma base de 15 perguntas e respostas frequentes para {canal} do {empresa}.
+
+Para cada entrada:
+- Pergunta (exatamente como o cliente pergunta, com variações)
+- Resposta principal (máxima 3 linhas, tom humano)
+- Ação sugerida (link, transferência para atendente, etc.)
+- Variações da mesma pergunta (2-3 formas diferentes)
+
+Categorize em: Reservas, Hospedagem, Serviços, Localização e Pagamento.
+
+Inclua também: 5 mensagens de "não entendi" que não frustram o cliente.
+
+Empresa: {empresa}
+Canal: {canal}
+Tom da marca: {tom}
+3 dúvidas mais frequentes hoje: {duvidas_frequentes}',
+array['chatbot','faq','automação','atendimento'], 'médio', true, false),
+
+(v_atendimento,
+'Protocolo de Atendimento VIP',
+'Define padrões e scripts de atendimento diferenciado para hóspedes de alto valor.',
+'Você é especialista em hospitalidade de luxo e experiência do cliente premium.
+
+Crie um protocolo de atendimento VIP completo:
+
+1. Critérios de classificação VIP (quem recebe esse tratamento)
+2. Touchpoints VIP: cada momento de contato e o que fazer em cada um
+3. Scripts específicos para: chegada, durante a estadia, saída
+4. Antecipatório: 5 ações proativas antes do hóspede pedir
+5. Registro de preferências: o que capturar e como usar
+6. Recuperação VIP: quando algo dá errado com um VIP, protocolo especial
+
+Tom: sofisticado, discreto, antecipatório — nunca servil.
+
+Perfil do cliente VIP: {perfil}
+Segmento do negócio: {segmento}
+Orçamento para mimos/gestos: R$ {orcamento} por hóspede
+Equipe envolvida: {equipe}',
+array['vip','protocolo','luxo','atendimento'], 'avançado', true, true),
+
+(v_atendimento,
+'Pesquisa de Satisfação Pós-Estadia',
+'Cria questionário de NPS e satisfação que os hóspedes realmente respondem.',
+'Você é especialista em experiência do cliente e voz do consumidor.
+
+Crie uma pesquisa de satisfação pós-estadia com máximo 6 questões que:
+- Seja respondida em menos de 2 minutos
+- Tenha taxa de resposta acima de 30%
+- Gere dados acionáveis (não apenas NPS)
+
+Formato:
+1. Abertura personalizada (não genérica)
+2. NPS (0-10 com 1 campo aberto de seguimento)
+3. 2 questões específicas dos pontos críticos do serviço
+4. 1 questão de Net Easy Score (esforço do cliente)
+5. 1 campo aberto final
+6. Encerramento que converte em próxima reserva
+
+Hotel: {nome_hotel}
+Canal de envio: {canal} (email/WhatsApp/QR code)
+Timing do envio: {timing} horas após o check-out
+Incentivo para resposta (se houver): {incentivo}',
+array['nps','satisfação','pesquisa','experiência'], 'médio', true, false),
+
+(v_atendimento,
+'Treinamento de Atendimento em 5 Cenas',
+'Material de treinamento situacional para equipe de atendimento.',
+'Você é especialista em treinamento de equipes de atendimento ao cliente.
+
+Crie 5 cenas de roleplay para treinamento da equipe, cobrindo:
+1. Hóspede insatisfeito com quarto (reclamação legítima)
+2. Solicitação impossível de atender (pedido fora do padrão)
+3. Hóspede confuso ou ansioso (primeira estadia, muitas perguntas)
+4. Conflito entre hóspedes
+5. Hóspede VIP com expectativa muito alta
+
+Para cada cena:
+- Contexto e perfil do hóspede
+- Abertura do hóspede (fala exata)
+- O que NÃO fazer (erro comum da equipe)
+- O que FAZER (resposta ideal passo a passo)
+- Frase-chave que transforma a situação
+
+Segmento do hotel: {segmento}
+Nível de experiência da equipe: {nivel_equipe}',
+array['treinamento','roleplay','equipe','atendimento'], 'médio', true, false),
+
+(v_atendimento,
+'Sequência de Follow-up Pós-Cotação',
+'Acompanhamento inteligente de leads que não fecharam reserva.',
+'Você é especialista em vendas consultivas para hospitalidade.
+
+Crie uma sequência de follow-up para leads que receberam cotação mas não reservaram.
+
+Mensagem 1 (2 dias após cotação): verificação suave
+Mensagem 2 (5 dias): valor agregado (nova informação ou benefício)
+Mensagem 3 (10 dias): última tentativa com oferta especial ou escassez real
+
+Para cada mensagem:
+- Assunto (email) ou abertura (WhatsApp)
+- Corpo (máximo 5 linhas)
+- CTA específico
+- O que evitar (erros de follow-up que irritam)
+
+Canal: {canal}
+Tipo de reserva cotada: {tipo_reserva}
+Valor da cotação: R$ {valor}
+Motivo provável da não conversão: {motivo_provavel}',
+array['follow-up','vendas','conversão','crm'], 'médio', true, false);
+
+end $$;
+
+-- ============================================================
+-- Verificação final
+-- ============================================================
+select
+  c.label as categoria,
+  count(p.id) as total_prompts
+from public.prompts p
+join public.categories c on c.id = p.category_id
+group by c.label, c.sort_order
+order by c.sort_order;

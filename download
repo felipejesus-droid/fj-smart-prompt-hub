@@ -1,0 +1,356 @@
+-- ============================================================
+-- FJ Smart Prompt Hub — Supabase Schema
+-- ============================================================
+
+-- Enable UUID extension
+create extension if not exists "uuid-ossp";
+
+-- ============================================================
+-- PROFILES
+-- Extends Supabase auth.users
+-- ============================================================
+create table public.profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  full_name     text,
+  avatar_url    text,
+  email         text,
+  role          text default 'user',         -- 'user' | 'admin'
+  plan          text default 'free',         -- 'free' | 'pro' | 'enterprise'
+  company       text,
+  department    text,
+  total_uses    integer default 0,
+  streak_days   integer default 0,
+  last_active   date,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+-- RLS
+alter table public.profiles enable row level security;
+
+create policy "Usuário vê apenas o próprio perfil"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+create policy "Usuário atualiza apenas o próprio perfil"
+  on public.profiles for update
+  using (auth.uid() = id);
+
+-- Auto-criar profile ao criar usuário
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url, email)
+  values (
+    new.id,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    new.email
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- ============================================================
+-- CATEGORIES
+-- ============================================================
+create table public.categories (
+  id          uuid primary key default uuid_generate_v4(),
+  slug        text unique not null,           -- 'hotel', 'rh', 'marketing'...
+  label       text not null,
+  icon        text,
+  description text,
+  color       text,                           -- hex color
+  sort_order  integer default 0,
+  is_active   boolean default true,
+  created_at  timestamptz default now()
+);
+
+-- RLS — categorias são públicas (leitura)
+alter table public.categories enable row level security;
+
+create policy "Categorias visíveis para todos autenticados"
+  on public.categories for select
+  to authenticated
+  using (is_active = true);
+
+-- Seed categories
+insert into public.categories (slug, label, icon, sort_order) values
+  ('hotel',      'Hotelaria',   '⌂', 1),
+  ('rh',         'RH',          '◎', 2),
+  ('marketing',  'Marketing',   '◬', 3),
+  ('lideranca',  'Liderança',   '△', 4),
+  ('atendimento','Atendimento', '◇', 5);
+
+-- ============================================================
+-- PROMPTS
+-- Biblioteca principal
+-- ============================================================
+create table public.prompts (
+  id            uuid primary key default uuid_generate_v4(),
+  category_id   uuid references public.categories(id) on delete set null,
+  author_id     uuid references public.profiles(id) on delete set null,
+
+  title         text not null,
+  description   text,
+  prompt_text   text not null,
+  tags          text[] default '{}',
+  difficulty    text default 'fácil',         -- 'fácil' | 'médio' | 'avançado'
+
+  is_public     boolean default true,
+  is_featured   boolean default false,
+  is_active     boolean default true,
+
+  uses_count    integer default 0,
+  rating_sum    numeric default 0,
+  rating_count  integer default 0,
+  rating_avg    numeric generated always as (
+    case when rating_count = 0 then 0
+    else round(rating_sum / rating_count, 1) end
+  ) stored,
+
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+-- Índices
+create index idx_prompts_category on public.prompts(category_id);
+create index idx_prompts_tags on public.prompts using gin(tags);
+create index idx_prompts_public on public.prompts(is_public, is_active);
+
+-- RLS
+alter table public.prompts enable row level security;
+
+create policy "Prompts públicos visíveis para todos autenticados"
+  on public.prompts for select
+  to authenticated
+  using (is_public = true and is_active = true);
+
+create policy "Autor vê e edita seus prompts"
+  on public.prompts for all
+  using (author_id = auth.uid());
+
+create policy "Admins têm acesso total"
+  on public.prompts for all
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- ============================================================
+-- FAVORITES
+-- ============================================================
+create table public.favorites (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid references public.profiles(id) on delete cascade not null,
+  prompt_id   uuid references public.prompts(id) on delete cascade not null,
+  created_at  timestamptz default now(),
+  unique(user_id, prompt_id)
+);
+
+-- Índice
+create index idx_favorites_user on public.favorites(user_id);
+
+-- RLS
+alter table public.favorites enable row level security;
+
+create policy "Usuário gerencia apenas seus próprios favoritos"
+  on public.favorites for all
+  using (user_id = auth.uid());
+
+-- ============================================================
+-- PROMPT_USAGE
+-- Histórico de uso e analytics
+-- ============================================================
+create table public.prompt_usage (
+  id              uuid primary key default uuid_generate_v4(),
+  user_id         uuid references public.profiles(id) on delete cascade not null,
+  prompt_id       uuid references public.prompts(id) on delete cascade not null,
+  variables_used  jsonb,                      -- { "nome": "Felipe", "contexto": "..." }
+  rating          integer check (rating between 1 and 5),
+  used_at         timestamptz default now()
+);
+
+-- Índices
+create index idx_usage_user on public.prompt_usage(user_id);
+create index idx_usage_prompt on public.prompt_usage(prompt_id);
+create index idx_usage_date on public.prompt_usage(used_at);
+
+-- RLS
+alter table public.prompt_usage enable row level security;
+
+create policy "Usuário vê e cria apenas seu próprio histórico"
+  on public.prompt_usage for all
+  using (user_id = auth.uid());
+
+-- Trigger: incrementar uses_count no prompt ao registrar uso
+create or replace function public.increment_prompt_uses()
+returns trigger language plpgsql security definer as $$
+begin
+  update public.prompts
+  set uses_count = uses_count + 1
+  where id = new.prompt_id;
+
+  -- Atualiza rating se fornecido
+  if new.rating is not null then
+    update public.prompts
+    set
+      rating_sum   = rating_sum + new.rating,
+      rating_count = rating_count + 1
+    where id = new.prompt_id;
+  end if;
+
+  -- Atualiza total_uses e last_active no perfil
+  update public.profiles
+  set
+    total_uses  = total_uses + 1,
+    last_active = current_date
+  where id = new.user_id;
+
+  return new;
+end;
+$$;
+
+create trigger on_prompt_used
+  after insert on public.prompt_usage
+  for each row execute procedure public.increment_prompt_uses();
+
+-- ============================================================
+-- CUSTOM_PROMPTS
+-- Prompts criados pelo próprio usuário (Meu Espaço)
+-- ============================================================
+create table public.custom_prompts (
+  id            uuid primary key default uuid_generate_v4(),
+  user_id       uuid references public.profiles(id) on delete cascade not null,
+  category_id   uuid references public.categories(id) on delete set null,
+
+  title         text not null,
+  description   text,
+  prompt_text   text not null,
+  tags          text[] default '{}',
+  difficulty    text default 'fácil',
+  is_shared     boolean default false,        -- compartilhar com equipe?
+
+  uses_count    integer default 0,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+-- RLS
+alter table public.custom_prompts enable row level security;
+
+create policy "Usuário gerencia apenas seus custom prompts"
+  on public.custom_prompts for all
+  using (user_id = auth.uid());
+
+create policy "Custom prompts compartilhados são visíveis para todos"
+  on public.custom_prompts for select
+  to authenticated
+  using (is_shared = true);
+
+-- ============================================================
+-- ACHIEVEMENTS
+-- Gamificação
+-- ============================================================
+create table public.achievements (
+  id          uuid primary key default uuid_generate_v4(),
+  slug        text unique not null,
+  label       text not null,
+  description text,
+  icon        text,
+  condition   jsonb,                          -- { "type": "uses_count", "threshold": 100 }
+  points      integer default 10,
+  created_at  timestamptz default now()
+);
+
+create table public.user_achievements (
+  id             uuid primary key default uuid_generate_v4(),
+  user_id        uuid references public.profiles(id) on delete cascade not null,
+  achievement_id uuid references public.achievements(id) on delete cascade not null,
+  unlocked_at    timestamptz default now(),
+  unique(user_id, achievement_id)
+);
+
+-- RLS
+alter table public.achievements enable row level security;
+alter table public.user_achievements enable row level security;
+
+create policy "Conquistas visíveis para todos autenticados"
+  on public.achievements for select to authenticated using (true);
+
+create policy "Usuário vê apenas suas conquistas"
+  on public.user_achievements for select
+  using (user_id = auth.uid());
+
+-- Seed achievements
+insert into public.achievements (slug, label, icon, points, condition) values
+  ('first_use',      'Primeiro prompt',      '🚀', 10,  '{"type":"uses_count","threshold":1}'),
+  ('first_favorite', 'Primeiro favorito',    '⭐', 10,  '{"type":"favorites_count","threshold":1}'),
+  ('streak_7',       '7 dias seguidos',      '🔥', 50,  '{"type":"streak_days","threshold":7}'),
+  ('uses_100',       '100 prompts usados',   '💯', 100, '{"type":"uses_count","threshold":100}'),
+  ('uses_500',       '500 usos',             '💎', 250, '{"type":"uses_count","threshold":500}'),
+  ('uses_1000',      '1000 usos',            '⚡', 500, '{"type":"uses_count","threshold":1000}'),
+  ('first_custom',   'Prompt criado',        '◈',  25,  '{"type":"custom_prompts_count","threshold":1}'),
+  ('power_user',     'Power user',           '🏆', 200, '{"type":"uses_count","threshold":50}');
+
+-- ============================================================
+-- VIEWS ÚTEIS
+-- ============================================================
+
+-- Prompts com info de favorito para o usuário autenticado
+create or replace view public.prompts_with_favorites as
+select
+  p.*,
+  c.label as category_label,
+  c.icon  as category_icon,
+  c.slug  as category_slug,
+  case when f.id is not null then true else false end as is_favorited
+from public.prompts p
+left join public.categories c on c.id = p.category_id
+left join public.favorites f
+  on f.prompt_id = p.id and f.user_id = auth.uid()
+where p.is_active = true and p.is_public = true;
+
+-- Top prompts por categoria
+create or replace view public.top_prompts as
+select
+  p.*,
+  c.label as category_label,
+  c.slug  as category_slug
+from public.prompts p
+left join public.categories c on c.id = p.category_id
+where p.is_active = true and p.is_public = true
+order by p.uses_count desc;
+
+-- ============================================================
+-- UPDATED_AT automático
+-- ============================================================
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger set_updated_at_profiles
+  before update on public.profiles
+  for each row execute procedure public.set_updated_at();
+
+create trigger set_updated_at_prompts
+  before update on public.prompts
+  for each row execute procedure public.set_updated_at();
+
+create trigger set_updated_at_custom_prompts
+  before update on public.custom_prompts
+  for each row execute procedure public.set_updated_at();
+
+-- ============================================================
+-- FIM DO SCHEMA
+-- ============================================================
