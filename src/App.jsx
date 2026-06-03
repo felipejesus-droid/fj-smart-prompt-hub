@@ -1,20 +1,16 @@
 // ============================================================
-// FJ Smart Prompt Hub — Versão Supabase
-// Substitui dados hardcoded por queries reais
-// Requer: @supabase/supabase-js instalado
+// FJ Smart Prompt Hub — Versão Responsiva
+// Mobile: hamburger drawer | Tablet: sidebar 60px | Desktop: sidebar 220px
 // ============================================================
 
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
 
 // ============================================================
 // SUPABASE CLIENT
-// Em produção: mover para src/lib/supabase.ts
-// Substituir pelas suas variáveis de ambiente reais
 // ============================================================
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "https://kyrqwjakejckyyugtgnz.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cnF3amFrZWpja3l5dWd0Z256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzc1MjQsImV4cCI6MjA5NTk1MzUyNH0.cuUsab9ylX7in7t7n_lL_TTx-JkQHrE11oKwjvo9sZk";
 
-// Client manual (sem dependência extra no artifact)
 const supabase = {
   async request(path, options = {}) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
@@ -48,7 +44,6 @@ const supabase = {
   },
 
   async getSession() {
-    // Checa hash de redirect do OAuth
     const hash = window.location.hash;
     if (hash.includes("access_token")) {
       const params = new URLSearchParams(hash.slice(1));
@@ -59,10 +54,7 @@ const supabase = {
         window.history.replaceState({}, "", window.location.pathname);
       }
     }
-    // Recupera token salvo
-    if (!this._token) {
-      this._token = localStorage.getItem("sb_token");
-    }
+    if (!this._token) this._token = localStorage.getItem("sb_token");
     if (!this._token) return null;
     try {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -75,7 +67,6 @@ const supabase = {
     } catch { return null; }
   },
 
-  // Queries prontas
   async getPrompts(categorySlug = null, search = "") {
     let q = "/prompts_with_favorites?is_active=eq.true&is_public=eq.true&order=uses_count.desc";
     if (categorySlug && categorySlug !== "all") q += `&category_slug=eq.${categorySlug}`;
@@ -129,22 +120,39 @@ const C = {
 };
 
 // ============================================================
+// RESPONSIVE HOOK
+// breakpoints: mobile < 640px | tablet 640–1024px | desktop > 1024px
+// ============================================================
+function useBreakpoint() {
+  const getBreakpoint = () => {
+    const w = window.innerWidth;
+    if (w < 640) return "mobile";
+    if (w < 1024) return "tablet";
+    return "desktop";
+  };
+  const [bp, setBp] = useState(getBreakpoint);
+  useEffect(() => {
+    const handler = () => setBp(getBreakpoint());
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return bp;
+}
+
+// ============================================================
 // AUTH CONTEXT
 // ============================================================
 const AuthContext = createContext(null);
 
 function AuthProvider({ children }) {
-  const [session, setSession] = useState(undefined); // undefined = loading
+  const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     supabase.getSession().then(async (s) => {
       setSession(s);
       if (s) {
-        try {
-          const p = await supabase.getProfile();
-          setProfile(p);
-        } catch {}
+        try { const p = await supabase.getProfile(); setProfile(p); } catch {}
       }
     });
   }, []);
@@ -173,16 +181,12 @@ function usePrompts(categorySlug, search) {
   const [error, setError] = useState(null);
 
   const fetchPrompts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const data = await supabase.getPrompts(categorySlug, search);
       setPrompts(data || []);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   }, [categorySlug, search]);
 
   useEffect(() => { fetchPrompts(); }, [fetchPrompts]);
@@ -191,10 +195,8 @@ function usePrompts(categorySlug, search) {
     setPrompts(prev => prev.map(p =>
       p.id === promptId ? { ...p, is_favorited: !isFavorited } : p
     ));
-    try {
-      await supabase.toggleFavorite(promptId, isFavorited);
-    } catch {
-      // rollback
+    try { await supabase.toggleFavorite(promptId, isFavorited); }
+    catch {
       setPrompts(prev => prev.map(p =>
         p.id === promptId ? { ...p, is_favorited: isFavorited } : p
       ));
@@ -278,11 +280,9 @@ function LoginPage() {
     <div style={{
       minHeight: "100vh", background: C.bg,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "'DM Sans', sans-serif", padding: "20px",
     }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-      `}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');`}</style>
       <div style={{
         background: C.surface, border: `1px solid ${C.borderLight}`,
         borderRadius: 20, padding: "48px 40px", maxWidth: 400, width: "100%",
@@ -293,9 +293,7 @@ function LoginPage() {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 26, color: C.bg, margin: "0 auto 20px",
         }}>⬡</div>
-        <div style={{ color: C.text, fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
-          FJ Smart Prompt Hub
-        </div>
+        <div style={{ color: C.text, fontSize: 22, fontWeight: 800, marginBottom: 6 }}>FJ Smart Prompt Hub</div>
         <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 32, lineHeight: 1.6 }}>
           Biblioteca corporativa de prompts de IA<br />para equipes de alta performance.
         </div>
@@ -304,8 +302,7 @@ function LoginPage() {
           disabled={loading}
           style={{
             width: "100%", background: loading ? C.accentDim : C.accent,
-            color: loading ? C.accent : C.bg,
-            border: `1px solid ${C.accent}`,
+            color: loading ? C.accent : C.bg, border: `1px solid ${C.accent}`,
             borderRadius: 10, padding: "14px 20px",
             cursor: loading ? "not-allowed" : "pointer",
             fontSize: 14, fontWeight: 700,
@@ -325,24 +322,22 @@ function LoginPage() {
             </>
           )}
         </button>
-        <div style={{ color: C.textDim, fontSize: 11, marginTop: 20 }}>
-          Acesso seguro via Supabase Auth
-        </div>
+        <div style={{ color: C.textDim, fontSize: 11, marginTop: 20 }}>Acesso seguro via Supabase Auth</div>
       </div>
     </div>
   );
 }
 
 // ============================================================
-// PROMPT MODAL (com registro de uso)
+// PROMPT MODAL
 // ============================================================
 function PromptModal({ prompt, onClose }) {
+  const bp = useBreakpoint();
   const [vars, setVars] = useState({});
   const [copied, setCopied] = useState(false);
   const [usageRegistered, setUsageRegistered] = useState(false);
 
   const varNames = [...new Set([...prompt.prompt_text.matchAll(/\{(\w+)\}/g)].map(m => m[1]))];
-
   const filled = varNames.reduce(
     (text, v) => text.replace(new RegExp(`\\{${v}\\}`, "g"), vars[v] || `{${v}}`),
     prompt.prompt_text
@@ -358,22 +353,37 @@ function PromptModal({ prompt, onClose }) {
     }
   };
 
+  const isMobile = bp === "mobile";
+
   return (
     <div style={{
       position: "fixed", inset: 0, background: "#00000099",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 999, padding: 20,
+      display: "flex", alignItems: isMobile ? "flex-end" : "center",
+      justifyContent: "center", zIndex: 999,
+      padding: isMobile ? 0 : 20,
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         background: C.surface, border: `1px solid ${C.borderLight}`,
-        borderRadius: 18, padding: 28, maxWidth: 700, width: "100%",
-        maxHeight: "90vh", overflowY: "auto",
+        borderRadius: isMobile ? "18px 18px 0 0" : 18,
+        padding: isMobile ? "24px 20px 32px" : 28,
+        maxWidth: isMobile ? "100%" : 700,
+        width: "100%",
+        maxHeight: isMobile ? "90vh" : "90vh",
+        overflowY: "auto",
         boxShadow: `0 0 60px ${C.accentGlow}`,
       }}>
+        {/* Drag handle on mobile */}
+        {isMobile && (
+          <div style={{
+            width: 40, height: 4, background: C.border,
+            borderRadius: 2, margin: "0 auto 20px", flexShrink: 0,
+          }} />
+        )}
+
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-          <div>
-            <div style={{ color: C.text, fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{prompt.title}</div>
+          <div style={{ flex: 1, marginRight: 8 }}>
+            <div style={{ color: C.text, fontSize: isMobile ? 15 : 17, fontWeight: 700, marginBottom: 8 }}>{prompt.title}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Pill level={prompt.difficulty} />
               {(prompt.tags || []).map(t => <Tag key={t} label={t} />)}
@@ -392,7 +402,7 @@ function PromptModal({ prompt, onClose }) {
             <div style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 10 }}>
               ◈ VARIÁVEIS
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
               {varNames.map(v => (
                 <div key={v}>
                   <div style={{ color: C.textMuted, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", marginBottom: 5 }}>{v}</div>
@@ -415,14 +425,12 @@ function PromptModal({ prompt, onClose }) {
 
         {/* Prompt text */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 10 }}>
-            ◈ PROMPT
-          </div>
+          <div style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 10 }}>◈ PROMPT</div>
           <div style={{
             background: C.bg, border: `1px solid ${C.border}`,
             borderRadius: 10, padding: 16, color: C.text,
-            fontSize: 13, lineHeight: 1.8, fontFamily: "'JetBrains Mono', monospace",
-            whiteSpace: "pre-wrap",
+            fontSize: isMobile ? 12 : 13, lineHeight: 1.8,
+            fontFamily: "'JetBrains Mono', monospace", whiteSpace: "pre-wrap",
           }}>{filled}</div>
         </div>
 
@@ -430,18 +438,16 @@ function PromptModal({ prompt, onClose }) {
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={handleCopy} style={{
             flex: 1, background: copied ? C.accentDim : C.accent,
-            color: copied ? C.accent : C.bg,
-            border: `1px solid ${C.accent}`,
+            color: copied ? C.accent : C.bg, border: `1px solid ${C.accent}`,
             borderRadius: 10, padding: "12px 20px",
-            cursor: "pointer", fontSize: 13, fontWeight: 700,
-            transition: "all 0.2s",
+            cursor: "pointer", fontSize: 13, fontWeight: 700, transition: "all 0.2s",
           }}>
             {copied ? "✓ copiado e uso registrado!" : "⎘ copiar prompt"}
           </button>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", gap: 20, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
           <span style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
             ↗ {(prompt.uses_count || 0).toLocaleString()} usos
           </span>
@@ -502,7 +508,7 @@ function PromptCard({ prompt, onOpen, onFavorite }) {
         {(prompt.tags || []).slice(0, 3).map(t => <Tag key={t} label={t} />)}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Pill level={prompt.difficulty} />
           <span style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
             ↗ {(prompt.uses_count || 0).toLocaleString()}
@@ -514,8 +520,7 @@ function PromptCard({ prompt, onOpen, onFavorite }) {
           )}
         </div>
         <span style={{
-          color: C.accent, fontSize: 11,
-          fontFamily: "'JetBrains Mono', monospace",
+          color: C.accent, fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
           opacity: hovered ? 1 : 0, transition: "opacity 0.18s",
         }}>ver →</span>
       </div>
@@ -524,9 +529,9 @@ function PromptCard({ prompt, onOpen, onFavorite }) {
 }
 
 // ============================================================
-// SIDEBAR
+// SIDEBAR — Desktop (220px) | Tablet (60px collapsed) | Mobile (drawer)
 // ============================================================
-function Sidebar({ page, setPage, profile, onSignOut }) {
+function Sidebar({ page, setPage, profile, onSignOut, drawerOpen, onCloseDrawer, bp }) {
   const nav = [
     { id: "dashboard",   icon: "◈", label: "Dashboard" },
     { id: "biblioteca",  icon: "⊞", label: "Biblioteca" },
@@ -535,76 +540,198 @@ function Sidebar({ page, setPage, profile, onSignOut }) {
     { id: "meu-espaco",  icon: "◇", label: "Meu Espaço" },
   ];
 
+  const isTablet = bp === "tablet";
+  const isMobile = bp === "mobile";
+  const collapsed = isTablet; // tablet = collapsed icons only
+
+  const handleNav = (id) => {
+    setPage(id);
+    if (isMobile) onCloseDrawer();
+  };
+
+  // Mobile: render as drawer overlay
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        {drawerOpen && (
+          <div
+            onClick={onCloseDrawer}
+            style={{
+              position: "fixed", inset: 0, background: "#00000080",
+              zIndex: 998, backdropFilter: "blur(2px)",
+            }}
+          />
+        )}
+        {/* Drawer */}
+        <div style={{
+          position: "fixed", top: 0, left: 0, bottom: 0,
+          width: 240, background: C.surface,
+          borderRight: `1px solid ${C.border}`,
+          display: "flex", flexDirection: "column",
+          padding: "22px 0", flexShrink: 0,
+          zIndex: 999,
+          transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
+        }}>
+          <SidebarContent nav={nav} page={page} onNav={handleNav} profile={profile} onSignOut={onSignOut} collapsed={false} onClose={onCloseDrawer} />
+        </div>
+      </>
+    );
+  }
+
+  // Tablet + Desktop: static sidebar
   return (
     <div style={{
-      width: 220, background: C.surface,
+      width: collapsed ? 60 : 220,
+      background: C.surface,
       borderRight: `1px solid ${C.border}`,
       display: "flex", flexDirection: "column",
       padding: "22px 0", flexShrink: 0,
+      transition: "width 0.2s ease",
+      overflow: "hidden",
     }}>
-      <div style={{ padding: "0 18px 26px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <SidebarContent nav={nav} page={page} onNav={handleNav} profile={profile} onSignOut={onSignOut} collapsed={collapsed} />
+    </div>
+  );
+}
+
+function SidebarContent({ nav, page, onNav, profile, onSignOut, collapsed, onClose }) {
+  return (
+    <>
+      {/* Logo */}
+      <div style={{ padding: collapsed ? "0 0 26px" : "0 18px 26px", display: "flex", justifyContent: collapsed ? "center" : "flex-start" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 10 }}>
           <div style={{
             width: 34, height: 34, background: C.accent, borderRadius: 8,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, color: C.bg,
+            fontSize: 16, color: C.bg, flexShrink: 0,
           }}>⬡</div>
-          <div>
-            <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>FJ Smart</div>
-            <div style={{ color: C.textMuted, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em" }}>PROMPT HUB</div>
-          </div>
+          {!collapsed && (
+            <div>
+              <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>FJ Smart</div>
+              <div style={{ color: C.textMuted, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em" }}>PROMPT HUB</div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: "0 10px" }}>
+      {/* Nav items */}
+      <div style={{ flex: 1, padding: collapsed ? "0 6px" : "0 10px" }}>
         {nav.map(item => {
           const active = page === item.id;
           return (
-            <button key={item.id} onClick={() => setPage(item.id)} style={{
-              width: "100%", textAlign: "left",
-              background: active ? C.accentDim : "none",
-              border: `1px solid ${active ? C.accentGlow : "transparent"}`,
-              borderRadius: 8, padding: "10px 12px",
-              color: active ? C.accent : C.textMuted,
-              cursor: "pointer", fontSize: 13,
-              display: "flex", alignItems: "center", gap: 10,
-              marginBottom: 2, transition: "all 0.15s",
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
-              <span>{item.icon}</span> {item.label}
+            <button
+              key={item.id}
+              onClick={() => onNav(item.id)}
+              title={collapsed ? item.label : undefined}
+              style={{
+                width: "100%", textAlign: collapsed ? "center" : "left",
+                background: active ? C.accentDim : "none",
+                border: `1px solid ${active ? C.accentGlow : "transparent"}`,
+                borderRadius: 8,
+                padding: collapsed ? "11px 0" : "10px 12px",
+                color: active ? C.accent : C.textMuted,
+                cursor: "pointer", fontSize: collapsed ? 18 : 13,
+                display: "flex", alignItems: "center",
+                justifyContent: collapsed ? "center" : "flex-start",
+                gap: collapsed ? 0 : 10,
+                marginBottom: 2, transition: "all 0.15s",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <span>{item.icon}</span>
+              {!collapsed && item.label}
             </button>
           );
         })}
       </div>
 
-      <div style={{ padding: "14px 18px 0", borderTop: `1px solid ${C.border}`, marginTop: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: "50%",
-            background: `linear-gradient(135deg, ${C.accent}, ${C.blue})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, color: C.bg, fontWeight: 800, flexShrink: 0,
-          }}>
-            {profile?.full_name?.slice(0, 2).toUpperCase() || "FJ"}
-          </div>
-          <div style={{ overflow: "hidden" }}>
-            <div style={{ color: C.text, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {profile?.full_name?.split(" ")[0] || "Usuário"}
+      {/* User footer */}
+      <div style={{
+        padding: collapsed ? "14px 6px 0" : "14px 18px 0",
+        borderTop: `1px solid ${C.border}`, marginTop: 10,
+      }}>
+        {collapsed ? (
+          // Collapsed: just avatar + sign out icon
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: "50%",
+              background: `linear-gradient(135deg, ${C.accent}, ${C.blue})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, color: C.bg, fontWeight: 800,
+            }}>
+              {profile?.full_name?.slice(0, 2).toUpperCase() || "FJ"}
             </div>
-            <div style={{ color: C.accent, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>
-              {profile?.plan || "free"}
-            </div>
+            <button onClick={onSignOut} title="Sair" style={{
+              background: "none", border: `1px solid ${C.border}`, color: C.textMuted,
+              borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 12,
+            }}>↩</button>
           </div>
-        </div>
-        <button onClick={onSignOut} style={{
-          width: "100%", background: "none",
-          border: `1px solid ${C.border}`, color: C.textMuted,
-          borderRadius: 6, padding: "6px 10px", cursor: "pointer",
-          fontSize: 11, textAlign: "left",
-        }}>
-          ↩ sair
-        </button>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: "50%",
+                background: `linear-gradient(135deg, ${C.accent}, ${C.blue})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, color: C.bg, fontWeight: 800, flexShrink: 0,
+              }}>
+                {profile?.full_name?.slice(0, 2).toUpperCase() || "FJ"}
+              </div>
+              <div style={{ overflow: "hidden" }}>
+                <div style={{ color: C.text, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profile?.full_name?.split(" ")[0] || "Usuário"}
+                </div>
+                <div style={{ color: C.accent, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>
+                  {profile?.plan || "free"}
+                </div>
+              </div>
+            </div>
+            <button onClick={onSignOut} style={{
+              width: "100%", background: "none",
+              border: `1px solid ${C.border}`, color: C.textMuted,
+              borderRadius: 6, padding: "6px 10px", cursor: "pointer",
+              fontSize: 11, textAlign: "left",
+            }}>↩ sair</button>
+          </>
+        )}
       </div>
+    </>
+  );
+}
+
+// ============================================================
+// MOBILE HEADER (hamburger)
+// ============================================================
+function MobileHeader({ onOpenDrawer, page }) {
+  const labels = {
+    dashboard: "Dashboard", biblioteca: "Biblioteca",
+    favoritos: "Favoritos", builder: "Builder", "meu-espaco": "Meu Espaço",
+  };
+  return (
+    <div style={{
+      height: 56, background: C.surface, borderBottom: `1px solid ${C.border}`,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 16px", flexShrink: 0,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 28, height: 28, background: C.accent, borderRadius: 7,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, color: C.bg,
+        }}>⬡</div>
+        <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>FJ Smart</div>
+      </div>
+      <div style={{ color: C.textMuted, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
+        {labels[page] || ""}
+      </div>
+      <button onClick={onOpenDrawer} style={{
+        background: "none", border: `1px solid ${C.border}`,
+        color: C.textMuted, borderRadius: 8,
+        padding: "6px 10px", cursor: "pointer", fontSize: 16,
+        display: "flex", alignItems: "center", gap: 4,
+      }}>☰</button>
     </div>
   );
 }
@@ -613,15 +740,20 @@ function Sidebar({ page, setPage, profile, onSignOut }) {
 // PAGES
 // ============================================================
 function Dashboard({ onNavigate }) {
+  const bp = useBreakpoint();
   const { profile } = useAuth();
   const { prompts, loading, toggleFavorite } = usePrompts(null, "");
   const [selected, setSelected] = useState(null);
 
   const featured = prompts.filter(p => p.is_featured).slice(0, 4);
-  const recent = prompts.slice(0, 5);
 
   const hora = new Date().getHours();
   const greeting = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+
+  const isMobile = bp === "mobile";
+  const isTablet = bp === "tablet";
+  const statsColumns = isMobile ? "1fr 1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(4, 1fr)";
+  const cardsColumns = isMobile ? "1fr" : "1fr 1fr";
 
   return (
     <div>
@@ -629,13 +761,11 @@ function Dashboard({ onNavigate }) {
         <div style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 6 }}>
           ◈ {greeting.toUpperCase()}, {(profile?.full_name?.split(" ")[0] || "FELIPE").toUpperCase()} —
         </div>
-        <div style={{ color: C.text, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>
-          Dashboard
-        </div>
+        <div style={{ color: C.text, fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Dashboard</div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: statsColumns, gap: 14, marginBottom: 28 }}>
         {[
           { label: "Total de prompts", value: prompts.length, icon: "◈", color: C.accent },
           { label: "Seus usos totais", value: profile?.total_uses || 0, icon: "↗", color: C.blue },
@@ -644,11 +774,11 @@ function Dashboard({ onNavigate }) {
         ].map(s => (
           <div key={s.label} style={{
             background: C.surface, border: `1px solid ${C.border}`,
-            borderRadius: 12, padding: 18,
+            borderRadius: 12, padding: isMobile ? 14 : 18,
           }}>
-            <div style={{ color: s.color, fontSize: 20, marginBottom: 8 }}>{s.icon}</div>
-            <div style={{ color: C.text, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{s.value}</div>
-            <div style={{ color: C.textMuted, fontSize: 11 }}>{s.label}</div>
+            <div style={{ color: s.color, fontSize: 18, marginBottom: 6 }}>{s.icon}</div>
+            <div style={{ color: C.text, fontSize: isMobile ? 18 : 22, fontWeight: 800, marginBottom: 4 }}>{s.value}</div>
+            <div style={{ color: C.textMuted, fontSize: isMobile ? 10 : 11 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -665,10 +795,9 @@ function Dashboard({ onNavigate }) {
           }}>ver todos →</button>
         </div>
         {loading ? <Spinner /> : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: cardsColumns, gap: 14 }}>
             {featured.map(p => (
-              <PromptCard key={p.id} prompt={p} onOpen={setSelected}
-                onFavorite={toggleFavorite} />
+              <PromptCard key={p.id} prompt={p} onOpen={setSelected} onFavorite={toggleFavorite} />
             ))}
           </div>
         )}
@@ -680,6 +809,7 @@ function Dashboard({ onNavigate }) {
 }
 
 function Biblioteca() {
+  const bp = useBreakpoint();
   const categories = useCategories();
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -687,17 +817,19 @@ function Biblioteca() {
   const [selected, setSelected] = useState(null);
   const { prompts, loading, error, toggleFavorite } = usePrompts(activeCat, search);
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 350);
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const isMobile = bp === "mobile";
+  const cardsColumns = isMobile ? "1fr" : "1fr 1fr";
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 6 }}>◈ EXPLORE —</div>
-        <div style={{ color: C.text, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Biblioteca</div>
+        <div style={{ color: C.text, fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Biblioteca</div>
       </div>
 
       <div style={{ position: "relative", marginBottom: 18 }}>
@@ -744,7 +876,7 @@ function Biblioteca() {
       {loading ? <Spinner /> : prompts.length === 0 ? (
         <EmptyState icon="◈" title="Nenhum prompt encontrado" subtitle="Tente outra categoria ou termo de busca" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: cardsColumns, gap: 14 }}>
           {prompts.map(p => (
             <PromptCard key={p.id} prompt={p} onOpen={setSelected} onFavorite={toggleFavorite} />
           ))}
@@ -757,20 +889,22 @@ function Biblioteca() {
 }
 
 function Favoritos() {
+  const bp = useBreakpoint();
   const { prompts, loading, toggleFavorite } = usePrompts(null, "");
   const [selected, setSelected] = useState(null);
   const favs = prompts.filter(p => p.is_favorited);
+  const isMobile = bp === "mobile";
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 6 }}>◈ COLEÇÃO —</div>
-        <div style={{ color: C.text, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Favoritos</div>
+        <div style={{ color: C.text, fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Favoritos</div>
       </div>
       {loading ? <Spinner /> : favs.length === 0 ? (
         <EmptyState icon="★" title="Nenhum favorito ainda" subtitle="Clique em ☆ em qualquer prompt para salvar aqui" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
           {favs.map(p => (
             <PromptCard key={p.id} prompt={p} onOpen={setSelected} onFavorite={toggleFavorite} />
           ))}
@@ -782,6 +916,7 @@ function Favoritos() {
 }
 
 function Builder() {
+  const bp = useBreakpoint();
   const [form, setForm] = useState({ title: "", role: "", task: "", context: "", format: "", tone: "" });
   const [generated, setGenerated] = useState("");
   const [copied, setCopied] = useState(false);
@@ -811,42 +946,34 @@ function Builder() {
     if (!generated || !form.title) return;
     setSaving(true);
     try {
-      await supabase.saveCustomPrompt({
-        title: form.title,
-        prompt_text: generated,
-        tags: [],
-        difficulty: "médio",
-      });
+      await supabase.saveCustomPrompt({ title: form.title, prompt_text: generated, tags: [], difficulty: "médio" });
       setSaved(true);
-    } catch (e) {
-      alert("Erro ao salvar: " + e.message);
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { alert("Erro ao salvar: " + e.message); }
+    finally { setSaving(false); }
   };
+
+  const isMobile = bp === "mobile";
+  const builderGrid = isMobile ? "1fr" : "1fr 1fr";
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 6 }}>◈ CRIE SEU PRÓPRIO —</div>
-        <div style={{ color: C.text, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Prompt Builder</div>
+        <div style={{ color: C.text, fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Prompt Builder</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: builderGrid, gap: 22 }}>
+        {/* Left: form */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {[
-            { key: "title", label: "TÍTULO", placeholder: "Nome do prompt..." },
-          ].map(f => (
-            <div key={f.key}>
-              <label style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", display: "block", marginBottom: 7 }}>◈ {f.label}</label>
-              <input value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                placeholder={f.placeholder} style={{
-                  width: "100%", background: C.surface, border: `1px solid ${C.border}`,
-                  borderRadius: 8, padding: "10px 13px", color: C.text,
-                  fontSize: 13, outline: "none", boxSizing: "border-box",
-                }} />
-            </div>
-          ))}
+          <div>
+            <label style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", display: "block", marginBottom: 7 }}>◈ TÍTULO</label>
+            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+              placeholder="Nome do prompt..." style={{
+                width: "100%", background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 8, padding: "10px 13px", color: C.text,
+                fontSize: 13, outline: "none", boxSizing: "border-box",
+              }} />
+          </div>
 
           <div>
             <label style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", display: "block", marginBottom: 7 }}>◈ PAPEL</label>
@@ -905,11 +1032,12 @@ function Builder() {
           }}>◈ Gerar Prompt</button>
         </div>
 
+        {/* Right: preview */}
         <div>
           <div style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 10 }}>◈ PREVIEW</div>
           <div style={{
             background: C.bg, border: `1px solid ${C.border}`,
-            borderRadius: 12, padding: 16, minHeight: 280,
+            borderRadius: 12, padding: 16, minHeight: isMobile ? 160 : 280,
             color: generated ? C.text : C.textDim, fontSize: 13,
             lineHeight: 1.8, fontFamily: "'JetBrains Mono', monospace",
             whiteSpace: "pre-wrap", marginBottom: 12,
@@ -940,6 +1068,7 @@ function Builder() {
 }
 
 function MeuEspaco() {
+  const bp = useBreakpoint();
   const { profile, signOut } = useAuth();
   const [achievements, setAchievements] = useState([]);
 
@@ -958,14 +1087,26 @@ function MeuEspaco() {
     { icon: "🏆", label: "Power user", unlocked: (profile?.total_uses || 0) >= 50 },
   ];
 
+  const isMobile = bp === "mobile";
+  const isTablet = bp === "tablet";
+
+  const profileGrid = isMobile
+    ? "1fr"
+    : isTablet
+      ? "1fr"
+      : "260px 1fr";
+
+  const achievementsColumns = isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)";
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ color: C.textMuted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 6 }}>◈ SEU PERFIL —</div>
-        <div style={{ color: C.text, fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Meu Espaço</div>
+        <div style={{ color: C.text, fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em" }}>Meu Espaço</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: profileGrid, gap: 20 }}>
+        {/* Profile card */}
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 22 }}>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <div style={{
@@ -996,10 +1137,11 @@ function MeuEspaco() {
           </div>
         </div>
 
+        {/* Right column */}
         <div>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, marginBottom: 16 }}>
             <div style={{ color: C.accent, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", marginBottom: 14 }}>◈ CONQUISTAS</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: achievementsColumns, gap: 10 }}>
               {defaultAchievements.map(a => (
                 <div key={a.label} style={{
                   background: a.unlocked ? C.goldDim : C.bg,
@@ -1030,11 +1172,13 @@ function MeuEspaco() {
 }
 
 // ============================================================
-// APP ROOT
+// APP SHELL — responsive layout controller
 // ============================================================
 function AppShell() {
   const { session, profile, loading, signOut } = useAuth();
   const [page, setPage] = useState("dashboard");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const bp = useBreakpoint();
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1051,6 +1195,11 @@ function AppShell() {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
+
+  // Close drawer on resize to non-mobile
+  useEffect(() => {
+    if (bp !== "mobile") setDrawerOpen(false);
+  }, [bp]);
 
   if (loading) {
     return (
@@ -1076,11 +1225,33 @@ function AppShell() {
     }
   };
 
+  const isMobile = bp === "mobile";
+
+  const contentPadding = isMobile ? "20px 16px 32px" : bp === "tablet" ? "24px 20px" : "28px 32px";
+
   return (
-    <div style={{ display: "flex", height: "100vh", background: C.bg, overflow: "hidden" }}>
-      <Sidebar page={page} setPage={setPage} profile={profile} onSignOut={signOut} />
-      <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
-        {renderPage()}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg, overflow: "hidden" }}>
+      {/* Mobile top header */}
+      {isMobile && (
+        <MobileHeader onOpenDrawer={() => setDrawerOpen(true)} page={page} />
+      )}
+
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Sidebar — renders as static on tablet/desktop, drawer on mobile */}
+        <Sidebar
+          page={page}
+          setPage={setPage}
+          profile={profile}
+          onSignOut={signOut}
+          drawerOpen={drawerOpen}
+          onCloseDrawer={() => setDrawerOpen(false)}
+          bp={bp}
+        />
+
+        {/* Main content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: contentPadding }}>
+          {renderPage()}
+        </div>
       </div>
     </div>
   );
